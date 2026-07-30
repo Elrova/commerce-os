@@ -12,9 +12,15 @@ export type IntegrationErrorCode =
   | "connection-failed"
   | "sync-failed"
   | "activation-failed";
+export type IntegrationInternalErrorCode =
+  | "supplier-insert-failed"
+  | "integration-insert-failed";
 
 export class IntegrationMutationError extends Error {
-  constructor(public readonly code: IntegrationErrorCode) {
+  constructor(
+    public readonly code: IntegrationErrorCode,
+    public readonly internalCode?: IntegrationInternalErrorCode,
+  ) {
     super(code);
   }
 }
@@ -56,7 +62,21 @@ async function activateConnector(
     })
     .select("id")
     .single();
-  if (supplierError || !supplier) throw new IntegrationMutationError("activation-failed");
+  if (supplierError || !supplier) {
+    console.error("[supplier-integration] supplier insert failed", {
+      internalCode: "supplier-insert-failed",
+      connectorCode: input.code,
+      workspaceId: context.workspace.id,
+      code: supplierError?.code,
+      message: supplierError?.message,
+      details: supplierError?.details,
+      hint: supplierError?.hint,
+    });
+    throw new IntegrationMutationError(
+      "activation-failed",
+      "supplier-insert-failed",
+    );
+  }
 
   const { data: integration, error } = await supabase
     .from("supplier_integrations")
@@ -74,6 +94,16 @@ async function activateConnector(
     .single();
 
   if (error || !integration) {
+    console.error("[supplier-integration] integration insert failed", {
+      internalCode: "integration-insert-failed",
+      connectorCode: input.code,
+      workspaceId: context.workspace.id,
+      supplierId: supplier.id,
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    });
     // L’index unique (workspace_id, connector_code) arbitre les clics
     // concurrents. Le fournisseur créé par la requête perdante est nettoyé.
     await supabase
@@ -83,7 +113,10 @@ async function activateConnector(
       .eq("workspace_id", context.workspace.id);
     const concurrent = await findIntegration(supabase, context.workspace.id, input.code);
     if (concurrent.data) return { integrationId: concurrent.data.id, created: false };
-    throw new IntegrationMutationError("activation-failed");
+    throw new IntegrationMutationError(
+      "activation-failed",
+      "integration-insert-failed",
+    );
   }
   return { integrationId: integration.id, created: true };
 }
