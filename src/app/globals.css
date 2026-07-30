@@ -49,8 +49,8 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.97 0.01 92);
+  --foreground: oklch(0.19 0.01 105);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -126,5 +126,13 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+  body {
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: oklch(0.82 0.035 125);
+    color: oklch(0.19 0.01 105);
   }
 }
