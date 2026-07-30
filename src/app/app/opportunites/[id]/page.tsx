@@ -26,6 +26,8 @@ type SupplierOffer = {
   id: string;
   unit_price: number;
   shipping_cost: number;
+  customs_cost: number;
+  platform_or_payment_fees: number;
   minimum_order_quantity: number;
   lead_time_days: number | null;
   is_preferred: boolean;
@@ -58,30 +60,20 @@ export default async function OpportunityDetailPage({
   if (!data) notFound();
 
   const opportunity = data as Opportunity;
-  const { data: products } = await supabase
-    .from("products")
-    .select("id")
+  const { data: offers, error: offersError } = await supabase
+    .from("supplier_offers")
+    .select(
+      "id, unit_price, shipping_cost, customs_cost, platform_or_payment_fees, minimum_order_quantity, lead_time_days, is_preferred, supplier:suppliers(name)",
+    )
     .eq("workspace_id", workspace.id)
-    .eq("opportunity_id", id);
-  const productIds = (products ?? []).map((product) => product.id);
-  let supplierOffers: SupplierOffer[] = [];
+    .eq("opportunity_id", id)
+    .order("is_preferred", { ascending: false })
+    .order("unit_price");
 
-  if (productIds.length > 0) {
-    const { data: offers, error: offersError } = await supabase
-      .from("supplier_offers")
-      .select(
-        "id, unit_price, shipping_cost, minimum_order_quantity, lead_time_days, is_preferred, supplier:suppliers(name)",
-      )
-      .eq("workspace_id", workspace.id)
-      .in("product_id", productIds)
-      .order("is_preferred", { ascending: false })
-      .order("unit_price");
-
-    if (offersError) {
-      throw new Error(`Impossible de charger les offres : ${offersError.message}`);
-    }
-    supplierOffers = (offers ?? []) as unknown as SupplierOffer[];
+  if (offersError) {
+    throw new Error(`Impossible de charger les offres : ${offersError.message}`);
   }
+  const supplierOffers = (offers ?? []) as unknown as SupplierOffer[];
 
   const financials = calculateOpportunityFinancials({
     purchasePrice: Number(opportunity.estimated_purchase_price ?? 0),
@@ -177,7 +169,7 @@ export default async function OpportunityDetailPage({
                   Comparer
                 </Link>
                 <Link
-                  href={`/app/fournisseurs?opportunity=${id}`}
+                  href={`/app/opportunites/${id}/offres/nouvelle`}
                   className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#20211d] px-4 text-sm font-medium text-white"
                 >
                   <Plus aria-hidden="true" className="size-4" />
@@ -191,7 +183,7 @@ export default async function OpportunityDetailPage({
                 <EmptyState
                   icon={<Building2 aria-hidden="true" className="size-5" />}
                   title="Aucune offre fournisseur"
-                  description="Associez d’abord un produit issu de cette opportunité, puis ajoutez une offre fournisseur pour comparer les coûts."
+                  description="Ajoutez une première offre directement à cette opportunité pour comparer les coûts réels avant de créer le produit."
                 />
               </div>
             ) : (
@@ -199,7 +191,7 @@ export default async function OpportunityDetailPage({
                 <table className="w-full min-w-[680px] text-left text-sm">
                   <thead className="bg-[#f8f7f3] text-xs text-[#85867f]">
                     <tr>
-                      {["Fournisseur", "Prix", "Livraison", "MOQ", "Lead time", "Préféré"].map((heading) => (
+                      {["Fournisseur", "Prix", "Coût complet", "MOQ", "Lead time", "Préféré"].map((heading) => (
                         <th key={heading} className="px-4 py-3 font-medium">{heading}</th>
                       ))}
                     </tr>
@@ -209,7 +201,7 @@ export default async function OpportunityDetailPage({
                       <tr key={offer.id} className="border-t border-[#efede7]">
                         <td className="px-4 py-4 font-medium">{offer.supplier?.name ?? "Fournisseur"}</td>
                         <td className="px-4 py-4">{currency.format(offer.unit_price)}</td>
-                        <td className="px-4 py-4">{currency.format(offer.shipping_cost)}</td>
+                        <td className="px-4 py-4">{currency.format(Number(offer.unit_price) + Number(offer.shipping_cost) + Number(offer.customs_cost) + Number(offer.platform_or_payment_fees))}</td>
                         <td className="px-4 py-4">{offer.minimum_order_quantity}</td>
                         <td className="px-4 py-4">{offer.lead_time_days ? `${offer.lead_time_days} jours` : "—"}</td>
                         <td className="px-4 py-4">
