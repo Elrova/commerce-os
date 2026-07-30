@@ -20,7 +20,7 @@ export const normalizedSupplierProductSchema = z.object({
   stock: z.number().int().nonnegative(), stockStatus: z.enum(["in_stock", "low_stock", "out_of_stock", "backorder"]),
   minimumOrderQuantity: z.number().int().positive(), weight: z.number().nonnegative().nullable(),
   dimensions: dimensionsSchema.nullable(), shippingCost: moneySchema.nullable(),
-  shippingCountries: z.array(z.string().length(2)), shipsFromCountry: z.string().length(2),
+  shippingCountries: z.array(z.string().length(2)), shipsFromCountry: z.string().length(2).nullable(),
   estimatedDeliveryMinDays: z.number().int().nonnegative().nullable(),
   estimatedDeliveryMaxDays: z.number().int().nonnegative().nullable(),
   productUrl: z.string().nullable(), active: z.boolean(), rawData: z.record(z.string(), z.unknown()),

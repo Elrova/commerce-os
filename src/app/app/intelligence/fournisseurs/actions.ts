@@ -21,6 +21,31 @@ export async function activateMockConnector() {
   redirect(`/app/intelligence/fournisseurs/${integration.id}`);
 }
 
+export async function activateMatterhornConnector() {
+  if (!process.env.MATTERHORN_API_KEY || !supplierConnectorRegistry.has("matterhorn")) {
+    throw new Error("Configurez MATTERHORN_API_KEY côté serveur avant d’activer Matterhorn.");
+  }
+  const { workspace } = await getCurrentContext();
+  const supabase = await createClient();
+  const connector = supplierConnectorRegistry.get("matterhorn");
+  const existing = await supabase.from("supplier_integrations").select("id").eq("workspace_id", workspace.id).eq("connector_code", connector.code).maybeSingle();
+  if (existing.data) redirect(`/app/intelligence/fournisseurs/${existing.data.id}`);
+  const { data: supplier, error: supplierError } = await supabase.from("suppliers").insert({
+    workspace_id: workspace.id, name: connector.name, website_url: "https://matterhorn-wholesale.com",
+    country: "Pologne", status: "active", notes: "Intégration API officielle Matterhorn.",
+  }).select("id").single();
+  if (supplierError || !supplier) throw new Error("Impossible de créer le fournisseur Matterhorn.");
+  const { data: integration, error } = await supabase.from("supplier_integrations").insert({
+    workspace_id: workspace.id, supplier_id: supplier.id, connector_code: connector.code,
+    environment: "production", status: "not_configured",
+    credentials_reference: "env:MATTERHORN_API_KEY", capabilities: connector.capabilities,
+    configuration: { maxProducts: Number(process.env.MATTERHORN_SYNC_MAX_PRODUCTS ?? 100) },
+  }).select("id").single();
+  if (error || !integration) throw new Error("Impossible d’activer Matterhorn.");
+  revalidatePath("/app/intelligence/fournisseurs");
+  redirect(`/app/intelligence/fournisseurs/${integration.id}`);
+}
+
 async function getAuthorizedIntegration(integrationId: string) {
   const { workspace } = await getCurrentContext();
   const supabase = await createClient();
