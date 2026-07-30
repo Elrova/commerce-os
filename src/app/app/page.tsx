@@ -9,6 +9,8 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { PageHeader, StatusPill } from "@/components/app/page-shell";
+import { getCurrentContext } from "@/lib/auth/current-context";
+import { getDashboardMetrics } from "@/lib/dashboard-data";
 
 const workflow = [
   {
@@ -49,12 +51,17 @@ const workflow = [
   },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { profile, user, workspace } = await getCurrentContext();
+  const { metrics, isDemoFallback } = await getDashboardMetrics(workspace.id);
+  const fullName = profile.full_name?.trim();
+  const firstName = fullName?.split(/\s+/)[0] || user.email.split("@")[0];
+
   return (
     <div className="mx-auto max-w-7xl">
       <PageHeader
         eyebrow="Vue d’ensemble"
-        title="Bonjour, construisons le prochain produit rentable."
+        title={`Bonjour ${firstName}, construisons le prochain produit rentable.`}
         description="Une lecture rapide des actions qui rapprochent ELROVA de sa prochaine vente."
         action={
           <Link
@@ -68,12 +75,7 @@ export default function DashboardPage() {
       />
 
       <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Chiffre d’affaires", "1 842 €", "+18,4 %"],
-          ["Marge nette", "527 €", "28,6 %"],
-          ["Commandes", "24", "1 à traiter"],
-          ["Stock valorisé", "3 960 €", "244 unités"],
-        ].map(([label, value, note]) => (
+        {metrics.map(({ label, value, note }) => (
           <div key={label} className="rounded-2xl border border-[#e0ded6] bg-white p-5">
             <p className="text-xs text-[#777871]">{label}</p>
             <p className="mt-3 text-2xl font-medium tracking-[-0.03em]">{value}</p>
@@ -81,6 +83,12 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+      {isDemoFallback && (
+        <p className="mt-3 text-right text-[11px] text-[#92938c]">
+          Aperçu de démonstration — les indicateurs réels apparaîtront dès la
+          première donnée enregistrée.
+        </p>
+      )}
 
       <section className="mt-8 rounded-2xl border border-[#e0ded6] bg-white p-5 sm:p-7">
         <div className="flex flex-wrap items-start justify-between gap-4">

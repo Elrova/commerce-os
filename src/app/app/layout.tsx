@@ -13,6 +13,8 @@ import {
   Settings2,
   ShoppingBag,
 } from "lucide-react";
+import { signOut } from "@/app/auth-actions";
+import { getCurrentContext } from "@/lib/auth/current-context";
 
 export const metadata: Metadata = {
   title: "Commerce OS",
@@ -30,9 +32,18 @@ const navigation = [
   { href: "/app/canaux", label: "Canaux de vente", icon: PlugZap },
 ];
 
-export default function CommerceAppLayout({
+export default async function CommerceAppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const { profile, user, workspace } = await getCurrentContext();
+  const displayName = profile.full_name || user.email || "Fondateur";
+  const initials = displayName
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+
   return (
     <div className="min-h-screen bg-[#f5f4ef] text-[#20211d] lg:grid lg:grid-cols-[248px_1fr]">
       <aside className="border-b border-[#e1dfd7] bg-[#1d1e1a] text-white lg:fixed lg:inset-y-0 lg:w-[248px] lg:border-b-0 lg:border-r lg:border-white/[0.07]">
@@ -83,17 +94,24 @@ export default function CommerceAppLayout({
             <Settings2 aria-hidden="true" className="size-4" />
             Paramètres
           </Link>
-          <div className="mt-3 flex items-center justify-between rounded-xl border border-white/[0.07] bg-white/[0.035] p-3">
+          <div className="mt-3 rounded-xl border border-white/[0.07] bg-white/[0.035] p-3">
+            <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="grid size-8 place-items-center rounded-full bg-[#6f7f67] text-xs font-semibold">
-                EF
+                {initials}
               </span>
               <div>
-                <p className="text-xs font-medium">Espace fondateur</p>
-                <p className="mt-0.5 text-[10px] text-white/40">ELROVA</p>
+                <p className="max-w-32 truncate text-xs font-medium">{displayName}</p>
+                <p className="mt-0.5 max-w-32 truncate text-[10px] text-white/40">{workspace.name}</p>
               </div>
             </div>
             <ChevronDown aria-hidden="true" className="size-3.5 text-white/35" />
+            </div>
+            <form action={signOut} className="mt-3 border-t border-white/[0.07] pt-3">
+              <button type="submit" className="text-[11px] text-white/45 transition-colors hover:text-white">
+                Se déconnecter
+              </button>
+            </form>
           </div>
         </div>
       </aside>
