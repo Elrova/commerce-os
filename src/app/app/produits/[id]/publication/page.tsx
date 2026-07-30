@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { ArrowLeft, Send } from "lucide-react";
+export default async function ProductPublicationPage({ params }: { params: Promise<{ id: string }> }) { const { id } = await params; return <div className="mx-auto grid min-h-[60vh] max-w-3xl place-items-center text-center"><div><Send className="mx-auto size-10 text-[#85907d]" /><h1 className="mt-5 text-2xl font-semibold">Publication du produit</h1><p className="mt-3 text-sm text-[#74756e]">Connectez un canal de vente pour publier cette référence via son API officielle.</p><Link href={`/app/produits/${id}`} className="mt-6 inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm"><ArrowLeft className="size-4" />Retour au produit</Link></div></div>; }

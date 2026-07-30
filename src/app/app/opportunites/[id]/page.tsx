@@ -7,6 +7,7 @@ import {
   Clock3,
   ExternalLink,
   Pencil,
+  PackageCheck,
   Plus,
   Scale,
 } from "lucide-react";
@@ -60,6 +61,12 @@ export default async function OpportunityDetailPage({
   if (!data) notFound();
 
   const opportunity = data as Opportunity;
+  const { data: convertedProduct } = await supabase
+    .from("products")
+    .select("id, name")
+    .eq("workspace_id", workspace.id)
+    .eq("opportunity_id", id)
+    .maybeSingle();
   const { data: offers, error: offersError } = await supabase
     .from("supplier_offers")
     .select(
@@ -108,10 +115,27 @@ export default async function OpportunityDetailPage({
           </h1>
         </div>
         <div className="flex flex-wrap gap-2">
+          {convertedProduct ? (
+            <Link
+              href={`/app/produits/${convertedProduct.id}`}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#eef1eb] px-4 text-sm font-medium text-[#586451]"
+            >
+              <PackageCheck aria-hidden="true" className="size-4" />
+              Voir le produit créé
+            </Link>
+          ) : (
+            <Link
+              href={`/app/opportunites/${opportunity.id}/transformer`}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#20211d] px-4 text-sm font-medium text-white"
+            >
+              <PackageCheck aria-hidden="true" className="size-4" />
+              Transformer en produit
+            </Link>
+          )}
           <DeleteOpportunityButton action={deleteAction} />
           <Link
             href={`/app/opportunites/${opportunity.id}/modifier`}
-            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#20211d] px-4 text-sm font-medium text-white"
+            className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#dedcd4] px-4 text-sm font-medium"
           >
             <Pencil aria-hidden="true" className="size-4" />
             Modifier
