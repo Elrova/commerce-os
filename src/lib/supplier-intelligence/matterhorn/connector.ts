@@ -22,12 +22,52 @@ const decodeCursor = (cursor?: string): MatterhornCursor => {
     return parsed;
   } catch { throw new InvalidSupplierResponseError("Curseur de pagination Matterhorn invalide."); }
 };
-function parseExternal<T>(schema: z.ZodType<T>, payload: unknown): T {
+function parseExternal<T>(
+  schema: z.ZodType<T>,
+  payload: unknown,
+  options: { diagnoseMismatch?: boolean } = {},
+): T {
   const result = schema.safeParse(payload);
   if (!result.success) {
+    if (options.diagnoseMismatch) {
+      logSchemaMismatch(payload, result.error.issues);
+    }
     throw new InvalidSupplierResponseError("La réponse Matterhorn ne respecte pas le format attendu.");
   }
   return result.data;
+}
+
+function logSchemaMismatch(
+  payload: unknown,
+  issues: readonly z.core.$ZodIssue[],
+) {
+  const isArray = Array.isArray(payload);
+  const isObject = payload !== null && typeof payload === "object" && !isArray;
+  const firstItem = isArray ? payload[0] : undefined;
+
+  console.error("[matterhorn] response schema mismatch", {
+    payloadType: payload === null
+      ? "null"
+      : isArray
+        ? "array"
+        : isObject
+          ? "object"
+          : "string",
+    topLevelKeys: isObject
+      ? Object.keys(payload as Record<string, unknown>).slice(0, 25)
+      : [],
+    arrayLength: isArray ? payload.length : undefined,
+    firstItemKeys:
+      firstItem !== null &&
+      typeof firstItem === "object" &&
+      !Array.isArray(firstItem)
+        ? Object.keys(firstItem as Record<string, unknown>).slice(0, 25)
+        : [],
+    zodIssues: issues.slice(0, 10).map((issue) => ({
+      path: issue.path.map(String),
+      code: issue.code,
+    })),
+  });
 }
 
 export class MatterhornSupplierConnector implements SupplierConnector {
@@ -44,7 +84,9 @@ export class MatterhornSupplierConnector implements SupplierConnector {
     const started = Date.now();
     try {
       const payload = await this.client.get("ITEMS/", { page: 1, limit: 1 });
-      parseExternal(matterhornProductsResponseSchema, payload);
+      parseExternal(matterhornProductsResponseSchema, payload, {
+        diagnoseMismatch: true,
+      });
       return supplierConnectionTestSchema.parse({ success: true, latencyMs: Date.now() - started, message: "Connexion Matterhorn validée.", testedAt: new Date().toISOString() });
     } catch (error) {
       return supplierConnectionTestSchema.parse({ success: false, latencyMs: Date.now() - started, message: error instanceof Error ? error.message : "Échec de connexion Matterhorn.", testedAt: new Date().toISOString() });
