@@ -68,6 +68,32 @@ function logSchemaMismatch(
       code: issue.code,
     })),
   });
+
+  issues.slice(0, 10).forEach((issue) => {
+    console.error("[matterhorn] invalid field", {
+      path: issue.path.map((segment) =>
+        typeof segment === "number" ? segment : String(segment),
+      ),
+      expected: "expected" in issue ? String(issue.expected) : "unknown",
+      received: describePayloadType(valueAtPath(payload, issue.path)),
+      code: issue.code,
+    });
+  });
+}
+
+function valueAtPath(payload: unknown, path: readonly PropertyKey[]) {
+  let current = payload;
+  for (const segment of path) {
+    if (current === null || typeof current !== "object") return undefined;
+    current = (current as Record<PropertyKey, unknown>)[segment];
+  }
+  return current;
+}
+
+function describePayloadType(value: unknown) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
 }
 
 export class MatterhornSupplierConnector implements SupplierConnector {
