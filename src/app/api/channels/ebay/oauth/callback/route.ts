@@ -1,0 +1,4 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentContext } from "@/lib/auth/current-context";
+import { verifyEbayOAuthState } from "@/lib/market-intelligence/ebay";
+export async function GET(request: NextRequest) { const context=await getCurrentContext(); const state=request.nextUrl.searchParams.get("state"), cookie=request.cookies.get("ebay_oauth_state")?.value; const target=new URL("/app/canaux/ebay/connecter",request.url); try { if(!state||!cookie||state!==cookie) throw new Error("state"); const verified=verifyEbayOAuthState(state); if(verified.workspaceId!==context.workspace.id||verified.userId!==context.user.id) throw new Error("context"); target.searchParams.set("status","ebay-configuration-pending"); } catch { target.searchParams.set("error","ebay-oauth-invalid"); } const response=NextResponse.redirect(target,303); response.cookies.delete("ebay_oauth_state"); return response; }
